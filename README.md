@@ -5,10 +5,10 @@ Look at wiki for pictures. <br>
 <br>
 Setup - <br>
 Commands to run : <br>
-  *Linux --- sudo apt-get install python3 python3-pip
-  *Windows --- Go find python3 and download it, remember it's free.
-  *pip install pyspectator <br>
-  *python3 server.py <br>
+* Linux --- sudo apt-get install python3 python3-pip
+* Windows --- Go find python3 and download it, remember it's free.
+* pip install pyspectator <br>
+* python3 server.py <br>
   
 ***NOTICE*** <br>
 This project uses a theme from html5 template (windows) to provide a graphical frontend for people to manage their servers. The only piece of data that is licensed in the license provided by this github is the 'server.py' and only that file is licensed as GPL v2.0 while html5 template requires you to leave on the footer link while using their themes. Guides will be made for you to understand how to convert your own themes. 
