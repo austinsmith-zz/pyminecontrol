@@ -18,7 +18,7 @@ except ImportError:
     pass
 using_mega = False # Mega just describes how much to import
 try:
-    import platform,socket,re,uuid,json,psutil,logging,time,subprocess
+    import platform,socket,re,uuid,json,psutil,logging,time,subprocess,mimetypes
     using_mega = True
 except ImportError:
     exit
@@ -33,8 +33,6 @@ hostName = "localhost" # This starts the web server to be only localhost, set to
 serverPort = 8080 # This sets the web server to http://localhost:8080 instead of just http://localhost but if you want to change
 # than set it to 80 as that's default for web applications.
 
-info = {}
-
 signin = { # This is a template for incase you don't have a login.austin file, it would generate this
     "login": "",
     "username": "admin", # TODO - Switch over to md5 to check username/password in 'login.austin'
@@ -44,9 +42,11 @@ signin = { # This is a template for incase you don't have a login.austin file, i
 
 data = { # This is a template for incase you don't have a config.austin file, it would generate this
 
+    "commands": ['/stats'], # place commands here for them to be used as shortcodes
     "miner_name": "Sexy Miner",
     "file_name": "server.py",
-    "version": "0.0.0"
+    "version": "0.0.0",
+    "404_redirect": "home.aus" # your redirect page
 
 }
 
@@ -59,6 +59,24 @@ def fprint(suffix, message): # Fancy Print
     except:
         print(str(suf[suf_log] + "Failed to do Fancy Print in " + data[file_name]))
 
+def load_send(file_line, ip):
+    k = file_line.split(" ")
+    need = False
+    c = -1
+    for i in k:
+        c += 1
+        h = i.strip("~")
+        w = h.split("_")
+        if i in data["commands"] and not need:
+            need = True
+            k[c] = execute(h,ip) # K works but deletes sentence
+        if w[0] in data["commands"] and not need:
+            need = True
+            k[c] = execute(h,ip)
+    if need:
+        return bytes(' '.join(k), "utf-8") 
+    return bytes(file_line, "utf-8")
+
 def execute(command, ip): # This is where we handle the connection
     message = []
     comArray = command.split("_")
@@ -68,18 +86,33 @@ def execute(command, ip): # This is where we handle the connection
         if using_pyspectator == False:
             return "Please install pyspectator to run /stats as it is needed for CPU information."
         cpu = Cpu(monitoring_latency=1)
-        message.append(" HostName - " + str(socket.gethostname()))
-        message.append(" System - " + platform.system())
-        message.append(" System Release - " + platform.release())
-        message.append(" System Version - " + platform.version())
-        message.append(" Architecture - " + platform.machine())
-        message.append(" Processor - " + platform.processor())
-        message.append(" RAM - " + str(round(psutil.virtual_memory().total / (1024.0 **3)))+ " GB")
-        message.append(" IP Address - " + str(socket.gethostbyname(socket.gethostname())))
-        message.append(" MAC Address - " + ':'.join(re.findall('..', '%012x' % uuid.getnode())))
-        message.append(" CPU Temp - " + str(cpu.temperature) + " C")
-        message.append(" CPU Load - " + str(cpu.load) + "%")
-        return ' <br> '.join(message)
+        try:
+            comArray[1] = comArray[1]
+        except:
+            return "Please remember to add args to shortcodes with '_'"
+        if comArray[1] == "hostname":
+            return str(socket.gethostname())
+        if comArray[1] == "system":
+            return str(platform.system())
+        if comArray[1] == "release":
+            return str(platform.release())
+        if comArray[1] == "version":
+            return str(platform.version())
+        if comArray[1] == "machine":
+            return str(platform.machine())
+        if comArray[1] == "processor":
+            return str(platform.processor())
+        if comArray[1] == "ram":
+            return str(round(psutil.virtual_memory().total / (1024.0 **3)))+ " GB"
+        if comArray[1] == "ip":
+            return str(socket.gethostbyname(socket.gethostname()))
+        if comArray[1] == "mac":
+            return ':'.join(re.findall('..', '%012x' % uuid.getnode()))
+        if comArray[1] == "temp":
+            return str(cpu.temperature) + " C"
+        if comArray[1] == "load":
+            return str(cpu.load) + "%"
+        return command
     if comArray[0] == "/signin":
         if comArray[1] == signin["username"] and comArray[2] == signin["password"]:
             signin["login"] = str(ip)
@@ -105,16 +138,49 @@ class MyServer(BaseHTTPRequestHandler):
         ### TODO - need to add control panel template into the html so that the miner can look
         ### nice and professional giving any miner the options they need to securely host their
         ### miners online.
-        self.send_response(200)
-        self.send_header("Content-type", "text/html")
-        self.end_headers()
+        fprint(1, str(self.path).strip("/"))
+        try:
+            filepath = str(self.path).strip("/")
+            f = open(filepath.strip("/"), "r")
+            mimetype, _ = mimetypes.guess_type(filepath)
+            self.send_response(200)
+            self.send_header("Content-type", mimetype)
+            self.end_headers()
+            w = filepath.split(".")
+            for s in f:
+                if w[1] == "css" or w[1] == "js":
+                    #fprint(1, w[1])
+                    self.wfile.write(bytes(s, "utf-8"))
+                else:
+                    self.wfile.write(load_send(s, self.client_address[0]))
+
+            f.close()
+        except:
+            try:
+                fprint(1, "Started backup procs...")
+                filepath = str(self.path).strip("/") + ".aus"
+                f = open(filepath.strip("/"), "r")
+                self.send_response(200)
+                self.send_header("Content-type", "text/html")
+                self.end_headers()
+                for s in f:
+                    self.wfile.write(load_send(s, self.client_address[0]))
+                f.close()
+            except:
+                filepath = data["404_redirect"]
+                f = open(filepath.strip("/"), "r")
+                self.send_response(200)
+                self.send_header("Content-type", "text/html")
+                self.end_headers()
+                for s in f:
+                    self.wfile.write(load_send(s, self.client_address[0]))
+                f.close()
         fprint(1 ,str(self.client_address)) # Sends a print of connected client as Log
-        self.wfile.write(bytes(execute(self.path, self.client_address[0] ), "utf-8")) # Do stuff on computer
+        #self.wfile.write(bytes(execute(self.path, self.client_address[0] ), "utf-8")) # Do stuff on computer
 
 if __name__ == "__main__":        
     webServer = HTTPServer((hostName, serverPort), MyServer)
     fprint(0 , "Started http://%s:%s" % (hostName, serverPort))
-    login = ""
 
     try:
         webServer.serve_forever()
