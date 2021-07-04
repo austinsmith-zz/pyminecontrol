@@ -12,6 +12,8 @@ Commands to run : <br>
   
 ***NOTICE*** <br>
 This project uses a theme from html5 template (windows) to provide a graphical frontend for people to manage their servers. The only piece of data that is licensed in the license provided by this github is the 'server.py' and only that file is licensed as GPL v2.0 while html5 template requires you to leave on the footer link while using their themes. Guides will be made for you to understand how to convert your own themes. 
+
+Also this program is not ready for production use. Http is being used for testing and for production we plan to use https as it's secure and can use ssl to ensure encryption.
   
 Settings - <br>
 Be sure to change the username and password before use as admin/admin is very basic and is there for placeholders.
